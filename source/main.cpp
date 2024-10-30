@@ -1,16 +1,23 @@
 #include <citro2d.h>
+#include <time.h>
+#include <deque>
+#include <math.h>
+#include <fstream>
 
+const int CELL_SIZE = 10;
+const int CELL_COUNT = 27;
 // the 3ds has different screen width, but the same screen height.
-const int TOP_SCREEN_WIDTH = 400;
+const int TOP_SCREEN_WIDTH = CELL_SIZE * CELL_COUNT;
 const int BOTTOM_SCREEN_WIDTH = 320;
-const int SCREEN_HEIGHT = 240;
+const int SCREEN_HEIGHT = CELL_SIZE * CELL_COUNT;
 
 C3D_RenderTarget *topScreen = nullptr;
 C3D_RenderTarget *bottomScreen = nullptr;
 
 bool isGamePaused;
 
-int collisionCounter;
+int score;
+int highScore;
 
 C2D_TextBuf textDynamicBuffer;
 
@@ -47,6 +54,174 @@ const int PLAYER_SPEED = 10;
 
 int ballVelocityX = 5;
 int ballVelocityY = 5;
+
+typedef struct
+{
+    int x;
+    int y;
+} Vector2;
+
+typedef struct
+{
+    int cellCount;
+    int cellSize;
+    std::deque<Vector2> body;
+    Vector2 direction;
+    bool shouldAddSegment;
+} Snake;
+
+Snake snake;
+
+typedef struct
+{
+    int cellCount;
+    int cellSize;
+    Vector2 position;
+    bool isDestroyed;
+} Food;
+
+Food food;
+
+Rectangle foodBounds;
+
+int rand_range(int min, int max)
+{
+    return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+}
+
+Vector2 generateRandomPosition()
+{
+    int positionX = rand_range(0, CELL_COUNT - 1);
+    int positionY = rand_range(0, CELL_COUNT - 1);
+
+    return Vector2{positionX, positionY};
+}
+
+Vector2 vector2Add(Vector2 vector1, Vector2 vector2)
+{
+    Vector2 result = {vector1.x + vector2.x, vector1.y + vector2.y};
+
+    return result;
+}
+
+int vector2Equals(Vector2 vector1, Vector2 vector2)
+{
+    const float EPSILON = 0.000001f;
+    int result = ((fabsf(vector1.x - vector2.x)) <= (EPSILON * fmaxf(1.0f, fmaxf(fabsf(vector1.x), fabsf(vector2.x))))) &&
+                 ((fabsf(vector1.y - vector2.y)) <= (EPSILON * fmaxf(1.0f, fmaxf(fabsf(vector1.y), fabsf(vector2.y)))));
+
+    return result;
+}
+
+double lastUpdateTime = 0;
+
+bool eventTriggered(float deltaTime, float intervalUpdate)
+{
+    lastUpdateTime += deltaTime;
+
+    if (lastUpdateTime >= intervalUpdate)
+    {
+        lastUpdateTime = 0;
+
+        return true;
+    }
+
+    return false;
+}
+
+void saveScore()
+{
+    std::string path = "high-score.txt";
+
+    std::ofstream highScores(path);
+
+    std::string scoreString = std::to_string(score);
+    highScores << scoreString;
+
+    highScores.close();
+}
+
+int loadHighScore()
+{
+    std::string highScoreText;
+
+    std::string path = "high-score.txt";
+
+    std::ifstream highScores(path);
+
+    if (!highScores.is_open())
+    {
+        saveScore();
+
+        std::ifstream auxHighScores(path);
+
+        getline(auxHighScores, highScoreText);
+
+        highScores.close();
+
+        int highScore = stoi(highScoreText);
+
+        return highScore;
+    }
+
+    getline(highScores, highScoreText);
+
+    highScores.close();
+
+    int highScore = stoi(highScoreText);
+
+    return highScore;
+}
+
+void resetSnakePosition()
+{
+    highScore = loadHighScore();    
+
+    if (score > highScore)
+    {
+        saveScore();
+
+        std::string highScoreString = "High Score: " + std::to_string(score);
+
+        // updateTextureText(highScoreTexture, highScoreString.c_str(), fontSquare, renderer);
+    }
+
+    snake.body = {{6, 9}, {5, 9}, {4, 9}};
+    snake.direction = {1, 0};
+
+    score = 0;
+    // updateTextureText(scoreTexture, "Score: 0", fontSquare, renderer);
+}
+
+bool checkCollisionWithFood(Vector2 foodPosition)
+{
+    if (vector2Equals(snake.body[0], foodPosition))
+    {
+        snake.shouldAddSegment = true;
+        return true;
+    }
+
+    return false;
+}
+
+void checkCollisionWithEdges()
+{
+    if (snake.body[0].x == CELL_COUNT || snake.body[0].x == -1 || snake.body[0].y == CELL_COUNT || snake.body[0].y == -1)
+    {
+        resetSnakePosition();
+    }
+}
+
+void checkCollisionBetweenHeadAndBody()
+{
+    for (size_t i = 1; i < snake.body.size(); i++)
+    {
+        if (vector2Equals(snake.body[0], snake.body[i]))
+        {
+            resetSnakePosition();
+        }
+    }
+}
 
 bool hasCollision(Rectangle &bounds, Rectangle &ball)
 {
@@ -100,7 +275,7 @@ void update()
 
 		ball.color = BLUE;
 
-		collisionCounter++;
+		score++;
 	}
 
 	ball.x += ballVelocityX;
@@ -151,7 +326,7 @@ void renderBottomScreen()
 	// Generate and draw dynamic text
 	char buf[160];
 	C2D_Text dynamicText;
-	snprintf(buf, sizeof(buf), "Total collisions: %d", collisionCounter);
+	snprintf(buf, sizeof(buf), "Total collisions: %d", score);
 	C2D_TextParse(&dynamicText, textDynamicBuffer, buf);
 	C2D_TextOptimize(&dynamicText);
 	C2D_DrawText(&dynamicText, C2D_AlignCenter | C2D_WithColor, 150, 175, 0, textSize, textSize, WHITE);
