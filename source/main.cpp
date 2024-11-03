@@ -279,12 +279,13 @@ void renderTopScreen()
 		int positionX = snake.body[i].x;
 		int positionY = snake.body[i].y;
 
-		Rectangle bodyBounds = {positionX * CELL_SIZE, positionY * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE, WHITE};
+		Rectangle bodyBounds = {(float) positionX * CELL_SIZE, (float)positionY * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE, WHITE};
 
 		C2D_DrawRectSolid(bodyBounds.x, bodyBounds.y, bodyBounds.z, bodyBounds.w, bodyBounds.h, bodyBounds.color);
 	}
 
-	foodBounds = {food.position.x * CELL_SIZE, food.position.y * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE, WHITE};
+	//(float) to avoid warning of conversion.
+	foodBounds = {(float) food.position.x * CELL_SIZE, (float)food.position.y * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE, WHITE};
 
 	C2D_DrawRectSolid(foodBounds.x, foodBounds.y, foodBounds.z, foodBounds.w, foodBounds.h, foodBounds.color);
 
@@ -317,7 +318,7 @@ void renderBottomScreen()
 	snprintf(buf2, sizeof(buf2), "High Score: %d", highScore);
 	C2D_TextParse(&dynamicText2, highScoreDynamicBuffer, buf2);
 	C2D_TextOptimize(&dynamicText2);
-	C2D_DrawText(&dynamicText2, C2D_AlignCenter | C2D_WithColor, 80, 20, 0, textSize, textSize, WHITE);
+	C2D_DrawText(&dynamicText2, C2D_AlignCenter | C2D_WithColor, 90, 20, 0, textSize, textSize, WHITE);
 
 	if (isGamePaused)
 	{
