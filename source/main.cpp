@@ -27,8 +27,6 @@ C2D_Text staticTexts[1];
 
 float textSize = 0.9f;
 
-C2D_Image sprite;
-
 // Create colors
 const u32 WHITE = C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF);
 const u32 BLACK = C2D_Color32(0x00, 0x00, 0x00, 0x00);
